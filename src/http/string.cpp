@@ -1,10 +1,31 @@
 #include "http/string.hpp"
+#include "http/method.hpp"
 #include <cctype>
 #include <cstddef>
 #include <string>
 #include <string_view>
 
 namespace tyga::http {
+std::string_view method_to_string(HttpMethod method) {
+  switch (method) {
+  case tyga::http::HttpMethod::GET:
+    return "GET";
+  case tyga::http::HttpMethod::POST:
+    return "POST";
+  case tyga::http::HttpMethod::PUT:
+    return "PUT";
+  case tyga::http::HttpMethod::DELETE:
+    return "DELETE";
+  case tyga::http::HttpMethod::PATCH:
+    return "PATCH";
+  case tyga::http::HttpMethod::OPTIONS:
+    return "OPTIONS";
+  case tyga::http::HttpMethod::HEAD:
+    return "HEAD";
+  }
+  return "";
+}
+
 int hex_value(char c) {
   if (c >= '0' && c <= '9') {
     return c - '0';
