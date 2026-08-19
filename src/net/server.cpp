@@ -53,6 +53,12 @@ void Server::run() {
       continue;
     }
 
+    timeval timeout{};
+    timeout.tv_sec = 10;
+    timeout.tv_usec = 0;
+
+    setsockopt(client_fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+
     thread_pool.submit([this, client_fd] {
       http::HttpConnection connection{client_fd, router_};
       connection.run();
