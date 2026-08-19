@@ -1,6 +1,10 @@
 #include "http/router.hpp"
 #include "http/method.hpp"
 #include "http/request.hpp"
+#include "http/response.hpp"
+#include "http/string.hpp"
+#include <iostream>
+#include <vector>
 
 namespace tyga::http {
 void Router::get(const std::string &path, Handler handler) {
@@ -11,11 +15,8 @@ void Router::post(const std::string &path, Handler handler) {
   routes_[{HttpMethod::POST, path}] = std::move(handler);
 }
 
-// path => /users/123
-// pattern => /users/:id
 bool Router::match_path(std::string_view pattern, std::string_view path,
                         std::vector<PathParam> &params) {
-
   size_t pattern_pos = 0;
   size_t path_pos = 0;
 
@@ -60,14 +61,19 @@ bool Router::match_path(std::string_view pattern, std::string_view path,
 }
 
 Response Router::handle(Request request) {
+  bool path_matched = false;
+  std::vector<HttpMethod> allowed_methods;
+
   for (const auto &[key, handler] : routes_) {
-    if (key.method != request.method) {
+    std::vector<PathParam> params;
+    if (!match_path(key.path, request.path, params)) {
       continue;
     }
+    path_matched = true;
 
-    std::vector<PathParam> params;
+    allowed_methods.push_back(key.method);
 
-    if (!match_path(key.path, request.path, params)) {
+    if (key.method != request.method) {
       continue;
     }
 
@@ -75,11 +81,21 @@ Response Router::handle(Request request) {
     return handler(request);
   }
 
-  return Response{
-      404,
-      "Not Found",
-      {},
-      "Not Found",
-  };
+  if (!path_matched) {
+    return Response::not_found();
+  }
+
+  Response response = Response::method_not_allowed();
+  std::string allow;
+  for (size_t i = 0; i < allowed_methods.size(); ++i) {
+    if (i > 0) {
+      allow += ", ";
+    }
+    allow += method_to_string(allowed_methods[i]);
+  }
+
+  std::cout << allow << std::endl;
+  response.header("Allow", allow);
+  return response;
 }
 } // namespace tyga::http

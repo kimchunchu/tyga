@@ -35,8 +35,6 @@ Response &Response::header(std::string name, std::string value) {
   return *this;
 }
 
-std::vector<ResponseHeader> Response::headers() { return headers_; }
-
 std::string Response::serialize() {
   std::string result;
   result += "HTTP/1.1";
@@ -47,7 +45,7 @@ std::string Response::serialize() {
   result += "\r\n";
 
   bool has_content_length = false;
-  for (const auto &header : headers()) {
+  for (const auto &header : headers_) {
     if (iequals(header.name, "Content-Length")) {
       has_content_length = true;
     }
