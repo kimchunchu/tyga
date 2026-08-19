@@ -2,6 +2,7 @@
 #include "http/parser.hpp"
 #include "http/request.hpp"
 #include "http/response.hpp"
+#include <cerrno>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -44,6 +45,11 @@ void HttpConnection::run() {
     }
 
     if (bytes_read < 0) {
+      if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        Response response =
+            Response::request_timeout().header("Connection", "close");
+        send_response(response);
+      }
       break;
     }
 
