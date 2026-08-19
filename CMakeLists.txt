@@ -8,9 +8,26 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_executable(tyga
-    src/main.cpp
+    src/app.cpp
+    src/core/threadpool.cpp
+    src/http/connection.cpp
+    src/http/parser.cpp
+    src/http/request.cpp
+    src/http/response.cpp
+    src/http/router.cpp
+    src/http/string.cpp
+    src/net/server.cpp
 )
 
 target_include_directories(tyga PRIVATE
 ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
+
+# target_compile_options(tyga PRIVATE
+#     -fsanitize=address
+#     -fno-omit-frame-pointer
+# )
+
+# target_link_options(tyga PRIVATE
+#     -fsanitize=address
+# )
