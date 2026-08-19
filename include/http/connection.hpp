@@ -12,7 +12,7 @@ public:
 
 private:
   void process();
-  void send_response(const Response &response);
+  void send_response(Response &response);
   int fd_;
   std::string buffer_;
   tyga::http::Router &router_;
