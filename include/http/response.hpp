@@ -18,6 +18,7 @@ public:
   static Response method_not_allowed();
   static Response bad_request();
   static Response payload_too_large();
+  static Response request_timeout();
   Response &header(std::string name, std::string value);
   std::string serialize();
 

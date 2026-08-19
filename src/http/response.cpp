@@ -26,6 +26,10 @@ Response Response::payload_too_large() {
   return Response{413, "Payload Too Large", {}, "Payload Too Large"};
 }
 
+Response Response::request_timeout() {
+  return Response{408, "Request Timeout", {}, "Request Timeout"};
+}
+
 Response &Response::header(std::string name, std::string value) {
   headers_.push_back({
       std::move(name),
