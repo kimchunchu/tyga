@@ -7,7 +7,7 @@
 namespace tyga::http {
 class HttpConnection {
 public:
-  HttpConnection(int fd, Router &router) : fd_(fd), router_(router) {};
+  HttpConnection(int fd, Router &router);
   void run();
 
 private:

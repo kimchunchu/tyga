@@ -6,6 +6,9 @@
 #include <unistd.h>
 
 namespace tyga::http {
+HttpConnection::HttpConnection(int fd, Router &router)
+    : fd_(fd), router_(router) {};
+
 void HttpConnection::process() {
   while (true) {
     ParseResult result = parse_request(buffer_);
