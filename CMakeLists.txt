@@ -8,6 +8,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_executable(tyga
+    examples/main.cpp
     src/app.cpp
     src/core/threadpool.cpp
     src/http/connection.cpp
