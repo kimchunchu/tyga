@@ -7,10 +7,14 @@
 #include <cstddef>
 #include <fcntl.h>
 #include <iostream>
+#include <memory>
 #include <netinet/in.h>
+#include <poll.h>
 #include <stdexcept>
+#include <sys/poll.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <vector>
 
 using namespace tyga::core;
 
@@ -60,31 +64,74 @@ void Server::run() {
   running_ = true;
   ThreadPool thread_pool(4);
 
+  std::vector<pollfd> fds;
+  fds.push_back({server_fd_, POLLIN});
   while (running_) {
-    int client_fd = accept(server_fd_, nullptr, nullptr);
-    if (client_fd < 0) {
-      if (errno == EAGAIN || errno == EWOULDBLOCK) {
-        std::cout << "accept(): no connection\n";
+    int result = poll(fds.data(), fds.size(), 1000);
+
+    if (result < 0) {
+      if (errno == EINTR) {
         continue;
       }
+      break;
+    }
 
-      if (!running_) {
-        break;
-      }
-
+    if (result == 0) {
       continue;
     }
 
-    timeval timeout{};
-    timeout.tv_sec = 10;
-    timeout.tv_usec = 0;
+    const std::size_t count = fds.size();
+    for (size_t i = 0; i < count; ++i) {
+      if (!(fds[i].revents & POLLIN)) {
+        continue;
+      }
 
-    setsockopt(client_fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+      if (fds[i].fd == server_fd_) {
+        int client_fd = accept(server_fd_, nullptr, nullptr);
+        if (client_fd < 0) {
+          if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            continue;
+          }
 
-    thread_pool.submit([this, client_fd] {
-      http::HttpConnection connection{client_fd, router_};
-      connection.run();
-    });
+          if (!running_) {
+            break;
+          }
+
+          continue;
+        }
+
+        fds.push_back({client_fd, POLLIN, 0});
+        connections_.emplace(client_fd, std::make_unique<http::HttpConnection>(
+                                            client_fd, router_));
+
+        timeval timeout{};
+        timeout.tv_sec = 10;
+        timeout.tv_usec = 0;
+
+        setsockopt(client_fd, SOL_SOCKET, SO_RCVTIMEO, &timeout,
+                   sizeof(timeout));
+
+      } else {
+        auto it = connections_.find(fds[i].fd);
+        if (it == connections_.end()) {
+          continue;
+        }
+
+        auto &connection = *it->second;
+
+        if (!connection.read()) {
+          close(fds[i].fd);
+          connections_.erase(it);
+          fds.erase(fds.begin() + i);
+          --i;
+
+          continue;
+        }
+
+        if (!connection.process()) {
+        }
+      }
+    }
   }
 }
 

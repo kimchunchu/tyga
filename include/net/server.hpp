@@ -1,8 +1,11 @@
 #pragma once
 
 #include "core/threadpool.hpp"
+#include "http/connection.hpp"
 #include "http/router.hpp"
 #include <atomic>
+#include <memory>
+#include <unordered_map>
 namespace tyga::net {
 class Server {
 public:
@@ -16,5 +19,7 @@ private:
   std::atomic<bool> running_{false};
   tyga::http::Router &router_;
   tyga::core::ThreadPool &thread_pool_;
+  std::unordered_map<int, std::unique_ptr<tyga::http::HttpConnection>>
+      connections_;
 };
 } // namespace tyga::net
