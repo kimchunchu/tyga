@@ -9,6 +9,7 @@ class HttpConnection {
 public:
   HttpConnection(int fd, Router &router);
   void run();
+  bool read();
 
 private:
   void process();
