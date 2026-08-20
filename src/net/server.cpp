@@ -3,7 +3,9 @@
 #include "http/connection.hpp"
 #include "http/router.hpp"
 #include <arpa/inet.h>
+#include <cerrno>
 #include <cstddef>
+#include <fcntl.h>
 #include <iostream>
 #include <netinet/in.h>
 #include <stdexcept>
@@ -18,6 +20,15 @@ Server::Server(int port, http::Router &router, ThreadPool &thread_pool)
   server_fd_ = socket(AF_INET, SOCK_STREAM, 0);
   if (server_fd_ < 0) {
     throw std::runtime_error("failed to receive socket file discriptor");
+  }
+
+  int flags = fcntl(server_fd_, F_GETFL, 0);
+  if (flags < 0) {
+    throw std::runtime_error("failed to get socket flags");
+  }
+
+  if (fcntl(server_fd_, F_SETFL, flags | O_NONBLOCK) < 0) {
+    throw std::runtime_error("failed to set non-blocking socket");
   }
 
   int opt = 1;
@@ -46,10 +57,21 @@ Server::Server(int port, http::Router &router, ThreadPool &thread_pool)
 };
 
 void Server::run() {
+  running_ = true;
   ThreadPool thread_pool(4);
-  while (true) {
+
+  while (running_) {
     int client_fd = accept(server_fd_, nullptr, nullptr);
     if (client_fd < 0) {
+      if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        std::cout << "accept(): no connection\n";
+        continue;
+      }
+
+      if (!running_) {
+        break;
+      }
+
       continue;
     }
 
@@ -65,4 +87,6 @@ void Server::run() {
     });
   }
 }
+
+void Server::stop() { running_ = false; }
 } // namespace tyga::net
