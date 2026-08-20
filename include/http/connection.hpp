@@ -10,9 +10,9 @@ public:
   HttpConnection(int fd, Router &router);
   void run();
   bool read();
+  bool process();
 
 private:
-  void process();
   void send_response(Response &response);
   int fd_;
   std::string buffer_;

@@ -4,6 +4,7 @@
 #include "http/response.hpp"
 #include <cerrno>
 #include <iostream>
+#include <string>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -13,15 +14,18 @@ namespace tyga::http {
 HttpConnection::HttpConnection(int fd, Router &router)
     : fd_(fd), router_(router) {};
 
-void HttpConnection::process() {
+bool HttpConnection::process() {
   while (true) {
     ParseResult result = parse_request(buffer_);
     if (result.status == ParseStatus::Incomplete) {
-      return;
+      return true;
     }
 
     if (result.status == ParseStatus::Error) {
-      return;
+      Response response = Response::bad_request().header("Connection", "close");
+
+      send_response(response);
+      return false;
     }
 
     Request &request = *result.request;
@@ -33,44 +37,10 @@ void HttpConnection::process() {
 
     send_response(response);
     buffer_.erase(0, result.consumed);
-    std::cout << "client_fd: " << fd_ << std::endl;
 
     if (should_close) {
-      std::cout << "커넥션 종료" << std::endl;
-      close(fd_);
-      return;
+      return false;
     }
-  }
-}
-
-void HttpConnection::run() {
-  while (true) {
-    char temp[4096];
-    ssize_t bytes_read = read(fd_, temp, sizeof(temp));
-    if (bytes_read == 0) {
-      break;
-    }
-
-    if (bytes_read < 0) {
-      if (errno == EAGAIN || errno == EWOULDBLOCK) {
-        Response response =
-            Response::request_timeout().header("Connection", "close");
-        send_response(response);
-      }
-      break;
-    }
-
-    buffer_.append(temp, bytes_read);
-
-    if (buffer_.size() > MAX_REQUEST_SIZE) {
-      Response response =
-          Response::payload_too_large().header("Connection", "close");
-      send_response(response);
-      close(fd_);
-      return;
-    }
-
-    process();
   }
 }
 
