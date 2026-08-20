@@ -3,7 +3,6 @@
 #include "http/request.hpp"
 #include "http/response.hpp"
 #include <cerrno>
-#include <iostream>
 #include <string>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -23,15 +22,18 @@ bool HttpConnection::process() {
 
     if (result.status == ParseStatus::Error) {
       Response response = Response::bad_request().header("Connection", "close");
-
       send_response(response);
-      return false;
+
+      close_after_write_ = true;
+      return true;
     }
 
     Request &request = *result.request;
     Response response = router_.handle(request);
     bool should_close = request.should_close();
+
     if (should_close) {
+      close_after_write_ = true;
       response.header("Connection", "close");
     }
 
@@ -39,7 +41,7 @@ bool HttpConnection::process() {
     read_buffer_.erase(0, result.consumed);
 
     if (should_close) {
-      return false;
+      return true;
     }
   }
 }
@@ -63,17 +65,36 @@ bool HttpConnection::read() {
   return false;
 }
 
-void HttpConnection::send_response(Response &response) {
-  std::string data = response.serialize();
-  size_t total_sent = 0;
-  while (total_sent < data.size()) {
-    ssize_t sent =
-        send(fd_, data.data() + total_sent, data.size() - total_sent, 0);
-    if (sent <= 0) {
-      return;
+bool HttpConnection::write() {
+  while (write_offset_ < write_buffer_.size()) {
+    ssize_t bytes_written = ::write(fd_, write_buffer_.data() + write_offset_,
+                                    write_buffer_.size() - write_offset_);
+
+    if (bytes_written > 0) {
+      write_offset_ += bytes_written;
+      continue;
     }
 
-    total_sent += static_cast<size_t>(sent);
+    if (bytes_written < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+      return true;
+    }
+
+    return false;
   }
+  write_buffer_.clear();
+  write_offset_ = 0;
+  if (close_after_write_) {
+    return false;
+  }
+
+  return true;
+}
+
+bool HttpConnection::wants_write() const {
+  return write_offset_ < write_buffer_.size();
+}
+
+void HttpConnection::send_response(Response &response) {
+  write_buffer_ += response.serialize();
 }
 } // namespace tyga::http

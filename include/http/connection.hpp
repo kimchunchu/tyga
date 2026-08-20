@@ -8,9 +8,10 @@ namespace tyga::http {
 class HttpConnection {
 public:
   HttpConnection(int fd, Router &router);
-  void run();
   bool read();
   bool process();
+  bool write();
+  bool wants_write() const;
 
 private:
   void send_response(Response &response);
@@ -18,6 +19,7 @@ private:
   std::string read_buffer_;
   std::string write_buffer_;
   std::size_t write_offset_ = 0;
+  bool close_after_write_ = false;
   tyga::http::Router &router_;
 };
 } // namespace tyga::http
