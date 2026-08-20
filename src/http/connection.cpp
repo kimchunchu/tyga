@@ -16,7 +16,7 @@ HttpConnection::HttpConnection(int fd, Router &router)
 
 bool HttpConnection::process() {
   while (true) {
-    ParseResult result = parse_request(buffer_);
+    ParseResult result = parse_request(read_buffer_);
     if (result.status == ParseStatus::Incomplete) {
       return true;
     }
@@ -36,7 +36,7 @@ bool HttpConnection::process() {
     }
 
     send_response(response);
-    buffer_.erase(0, result.consumed);
+    read_buffer_.erase(0, result.consumed);
 
     if (should_close) {
       return false;
@@ -49,7 +49,7 @@ bool HttpConnection::read() {
   ssize_t bytes_read = ::read(fd_, buffer, sizeof(buffer));
 
   if (bytes_read > 0) {
-    buffer_.append(buffer, bytes_read);
+    read_buffer_.append(buffer, bytes_read);
     return true;
   }
   if (bytes_read == 0) {

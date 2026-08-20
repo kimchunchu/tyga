@@ -15,7 +15,9 @@ public:
 private:
   void send_response(Response &response);
   int fd_;
-  std::string buffer_;
+  std::string read_buffer_;
+  std::string write_buffer_;
+  std::size_t write_offset_ = 0;
   tyga::http::Router &router_;
 };
 } // namespace tyga::http
