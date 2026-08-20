@@ -9,7 +9,7 @@
 namespace tyga::net {
 class Server {
 public:
-  Server(int port, http::Router &router, core::ThreadPool &thread_pool);
+  Server(int port, http::Router &router);
   void run();
   void stop();
 
@@ -18,7 +18,6 @@ private:
   int server_fd_;
   std::atomic<bool> running_{false};
   tyga::http::Router &router_;
-  tyga::core::ThreadPool &thread_pool_;
   std::unordered_map<int, std::unique_ptr<tyga::http::HttpConnection>>
       connections_;
 };

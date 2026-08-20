@@ -19,8 +19,7 @@
 using namespace tyga::core;
 
 namespace tyga::net {
-Server::Server(int port, http::Router &router, ThreadPool &thread_pool)
-    : port_(port), router_(router), thread_pool_(thread_pool) {
+Server::Server(int port, http::Router &router) : port_(port), router_(router) {
   server_fd_ = socket(AF_INET, SOCK_STREAM, 0);
   if (server_fd_ < 0) {
     throw std::runtime_error("failed to receive socket file discriptor");
@@ -62,8 +61,6 @@ Server::Server(int port, http::Router &router, ThreadPool &thread_pool)
 
 void Server::run() {
   running_ = true;
-  ThreadPool thread_pool(4);
-
   std::vector<pollfd> fds;
   fds.push_back({server_fd_, POLLIN});
   while (running_) {
@@ -82,12 +79,15 @@ void Server::run() {
 
     const std::size_t count = fds.size();
     for (size_t i = 0; i < count; ++i) {
-      if (!(fds[i].revents & POLLIN)) {
-        continue;
-      }
+      pollfd &pfd = fds[i];
 
-      if (fds[i].fd == server_fd_) {
+      if (pfd.fd == server_fd_) {
+        if (!(pfd.revents & POLLIN)) {
+          continue;
+        }
+
         int client_fd = accept(server_fd_, nullptr, nullptr);
+
         if (client_fd < 0) {
           if (errno == EAGAIN || errno == EWOULDBLOCK) {
             continue;
@@ -100,35 +100,67 @@ void Server::run() {
           continue;
         }
 
-        fds.push_back({client_fd, POLLIN, 0});
-        connections_.emplace(client_fd, std::make_unique<http::HttpConnection>(
-                                            client_fd, router_));
-
-        timeval timeout{};
-        timeout.tv_sec = 10;
-        timeout.tv_usec = 0;
-
-        setsockopt(client_fd, SOL_SOCKET, SO_RCVTIMEO, &timeout,
-                   sizeof(timeout));
-
-      } else {
-        auto it = connections_.find(fds[i].fd);
-        if (it == connections_.end()) {
+        int flags = fcntl(client_fd, F_GETFL, 0);
+        if (flags < 0 || fcntl(client_fd, F_SETFL, flags | O_NONBLOCK) < 0) {
+          close(client_fd);
           continue;
         }
 
-        auto &connection = *it->second;
+        fds.push_back({client_fd, POLLIN, 0});
+        connections_.emplace(client_fd, std::make_unique<http::HttpConnection>(
+                                            client_fd, router_));
+        continue;
+      }
+
+      auto it = connections_.find(pfd.fd);
+      if (it == connections_.end()) {
+        continue;
+      }
+
+      auto &connection = *it->second;
+
+      if (pfd.revents & (POLLERR | POLLHUP | POLLNVAL)) {
+        close(pfd.fd);
+        connections_.erase(pfd.fd);
+        fds.erase(fds.begin() + i);
+        --i;
+        continue;
+      }
+
+      if (pfd.revents & POLLIN) {
 
         if (!connection.read()) {
-          close(fds[i].fd);
+          close(pfd.fd);
           connections_.erase(it);
           fds.erase(fds.begin() + i);
           --i;
-
           continue;
         }
 
         if (!connection.process()) {
+          close(pfd.fd);
+          connections_.erase(it);
+          fds.erase(fds.begin() + i);
+          --i;
+          continue;
+        }
+
+        if (connection.wants_write()) {
+          pfd.events |= POLLOUT;
+        }
+      }
+
+      if (pfd.revents & POLLOUT) {
+        if (!connection.write()) {
+          close(pfd.fd);
+          connections_.erase(it);
+          fds.erase(fds.begin() + i);
+          --i;
+          continue;
+        }
+
+        if (!connection.wants_write()) {
+          pfd.events &= ~POLLOUT;
         }
       }
     }
