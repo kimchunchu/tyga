@@ -1,7 +1,7 @@
 #include "app.hpp"
 
 namespace tyga {
-App::App() : router_(), thread_pool_(4), server_(8080, router_, thread_pool_) {}
+App::App() : router_(), thread_pool_(4), server_(8080, router_) {}
 void App::run() { server_.run(); }
 void App::get(const std::string &path, http::Handler handler) {
   router_.get(path, handler);
