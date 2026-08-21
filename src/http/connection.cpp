@@ -3,6 +3,7 @@
 #include "http/request.hpp"
 #include "http/response.hpp"
 #include <cerrno>
+#include <chrono>
 #include <string>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -11,7 +12,8 @@ constexpr size_t MAX_REQUEST_SIZE = 1024 * 1024;
 
 namespace tyga::http {
 HttpConnection::HttpConnection(int fd, Router &router)
-    : fd_(fd), router_(router) {};
+    : fd_(fd), router_(router),
+      last_activity_(std::chrono::steady_clock::now()) {};
 
 bool HttpConnection::process() {
   while (true) {
@@ -51,6 +53,7 @@ bool HttpConnection::read() {
   ssize_t bytes_read = ::read(fd_, buffer, sizeof(buffer));
 
   if (bytes_read > 0) {
+    last_activity_ = std::chrono::steady_clock::now();
     read_buffer_.append(buffer, bytes_read);
     return true;
   }
@@ -71,6 +74,7 @@ bool HttpConnection::write() {
                                     write_buffer_.size() - write_offset_);
 
     if (bytes_written > 0) {
+      last_activity_ = std::chrono::steady_clock::now();
       write_offset_ += bytes_written;
       continue;
     }
@@ -81,6 +85,7 @@ bool HttpConnection::write() {
 
     return false;
   }
+
   write_buffer_.clear();
   write_offset_ = 0;
   if (close_after_write_) {
@@ -96,5 +101,10 @@ bool HttpConnection::wants_write() const {
 
 void HttpConnection::send_response(Response &response) {
   write_buffer_ += response.serialize();
+}
+
+bool HttpConnection::is_idle_timeout() const {
+  return std::chrono::steady_clock::now() - last_activity_ >
+         std::chrono::seconds(30);
 }
 } // namespace tyga::http
