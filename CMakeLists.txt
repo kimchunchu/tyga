@@ -19,13 +19,13 @@ src/http/string.cpp
 src/net/server.cpp
 )
 
-# add_executable(tyga_server
-#     examples/main.cpp
-# )
+add_executable(example
+    examples/main.cpp
+)
 
-# target_link_libraries(tyga_server
-#     PRIVATE tyga
-# )
+target_link_libraries(example
+    PRIVATE tyga
+)
 
 target_include_directories(tyga PUBLIC
 ${CMAKE_CURRENT_SOURCE_DIR}/include
