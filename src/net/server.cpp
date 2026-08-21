@@ -74,6 +74,7 @@ void Server::run() {
     }
 
     if (result == 0) {
+      check_timeouts(fds);
       continue;
     }
 
@@ -168,4 +169,25 @@ void Server::run() {
 }
 
 void Server::stop() { running_ = false; }
+
+void Server::check_timeouts(std::vector<pollfd> &fds) {
+  for (std::size_t i = 1; i < fds.size();) {
+    int fd = fds[i].fd;
+    auto it = connections_.find(fd);
+    if (it == connections_.end()) {
+      ++i;
+      continue;
+    }
+
+    if (it->second->is_idle_timeout()) {
+      std::cout << "[Timeout] fd=" << fd << std::endl;
+      close(fd);
+      connections_.erase(it);
+      fds.erase(fds.begin() + 1);
+      continue;
+    }
+
+    ++i;
+  }
+};
 } // namespace tyga::net
