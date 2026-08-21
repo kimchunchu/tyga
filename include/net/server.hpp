@@ -15,6 +15,7 @@ public:
   void run();
   void stop();
   void check_timeouts(std::vector<pollfd> &fds);
+  void remove_connection(std::vector<pollfd> &fds, std::size_t index);
 
 private:
   int port_;

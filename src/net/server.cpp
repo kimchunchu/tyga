@@ -59,6 +59,14 @@ Server::Server(int port, http::Router &router) : port_(port), router_(router) {
   }
 };
 
+void Server::remove_connection(std::vector<pollfd> &fds, std::size_t index) {
+  int fd = fds[index].fd;
+
+  close(fd);
+  connections_.erase(fd);
+  fds.erase(fds.begin() + index);
+}
+
 void Server::run() {
   running_ = true;
   std::vector<pollfd> fds;
@@ -121,9 +129,7 @@ void Server::run() {
       auto &connection = *it->second;
 
       if (pfd.revents & (POLLERR | POLLHUP | POLLNVAL)) {
-        close(pfd.fd);
-        connections_.erase(pfd.fd);
-        fds.erase(fds.begin() + i);
+        remove_connection(fds, i);
         --i;
         continue;
       }
@@ -131,17 +137,13 @@ void Server::run() {
       if (pfd.revents & POLLIN) {
 
         if (!connection.read()) {
-          close(pfd.fd);
-          connections_.erase(it);
-          fds.erase(fds.begin() + i);
+          remove_connection(fds, i);
           --i;
           continue;
         }
 
         if (!connection.process()) {
-          close(pfd.fd);
-          connections_.erase(it);
-          fds.erase(fds.begin() + i);
+          remove_connection(fds, i);
           --i;
           continue;
         }
@@ -153,9 +155,7 @@ void Server::run() {
 
       if (pfd.revents & POLLOUT) {
         if (!connection.write()) {
-          close(pfd.fd);
-          connections_.erase(it);
-          fds.erase(fds.begin() + i);
+          remove_connection(fds, i);
           --i;
           continue;
         }
