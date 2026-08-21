@@ -7,12 +7,10 @@
 #include <vector>
 
 namespace tyga::http {
-void Router::get(const std::string &path, Handler handler) {
-  routes_[{HttpMethod::GET, path}] = std::move(handler);
-}
 
-void Router::post(const std::string &path, Handler handler) {
-  routes_[{HttpMethod::POST, path}] = std::move(handler);
+void Router::add(const std::string &path, tyga::http::HttpMethod method,
+                 Handler handler) {
+  routes_[{method, path}] = std::move(handler);
 }
 
 bool Router::match_path(std::string_view pattern, std::string_view path,
@@ -63,9 +61,9 @@ bool Router::match_path(std::string_view pattern, std::string_view path,
 Response Router::handle(Request request) {
   bool path_matched = false;
   std::vector<HttpMethod> allowed_methods;
-
   for (const auto &[key, handler] : routes_) {
     std::vector<PathParam> params;
+
     if (!match_path(key.path, request.path, params)) {
       continue;
     }

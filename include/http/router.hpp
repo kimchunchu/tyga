@@ -1,5 +1,7 @@
 #pragma once
 
+#include "core/threadpool.hpp"
+#include "http/method.hpp"
 #include "http/request.hpp"
 #include "http/response.hpp"
 #include <functional>
@@ -30,9 +32,9 @@ class Router {
 public:
   bool match_path(std::string_view pattern, std::string_view path,
                   std::vector<PathParam> &params);
-  void get(const std::string &path, Handler handler);
-  void post(const std::string &path, Handler handler);
   Response handle(Request request);
+  void add(const std::string &path, tyga::http::HttpMethod method,
+           Handler handler);
 
 private:
   std::unordered_map<RouteKey, Handler, RouteKeyHash> routes_;

@@ -1,16 +1,14 @@
 #include "app.hpp"
+#include "http/router.hpp"
 
 namespace tyga {
 App::App() : router_(), server_(8080, router_) {}
 
 void App::run() { server_.run(); }
 
-void App::get(const std::string &path, http::Handler handler) {
-  router_.get(path, handler);
-}
-
-void App::post(const std::string &path, http::Handler handler) {
-  router_.post(path, handler);
+void App::route(const std::string &path, tyga::http::HttpMethod method,
+                http::Handler handler) {
+  router_.add(path, method, handler);
 }
 
 http::Response App::handle(http::Request request) {
