@@ -1,6 +1,5 @@
 #pragma once
 
-#include "http/header.hpp"
 #include "http/method.hpp"
 #include <vector>
 
@@ -10,12 +9,17 @@ struct PathParam {
   std::string value;
 };
 
+struct RequestHeader {
+  std::string_view name;
+  std::string_view value;
+};
+
 struct Request {
   HttpMethod method;
   std::string_view path;
   std::string_view version;
   std::string_view query;
-  std::vector<Header> headers;
+  std::vector<RequestHeader> headers;
   std::vector<PathParam> params;
   std::string body;
   bool should_close() const;

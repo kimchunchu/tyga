@@ -1,5 +1,4 @@
 #include "http/parser.hpp"
-#include "http/header.hpp"
 #include "http/method.hpp"
 #include "http/string.hpp"
 #include <cctype>
@@ -23,7 +22,7 @@ std::optional<size_t> parse_content_length(std::string_view value) {
   return result;
 };
 
-std::optional<Header> parse_header_line(std::string_view line) {
+std::optional<RequestHeader> parse_header_line(std::string_view line) {
   const size_t colon = line.find(':');
   if (colon == std::string_view::npos) {
     return std::nullopt;
@@ -33,7 +32,7 @@ std::optional<Header> parse_header_line(std::string_view line) {
     return std::nullopt;
   }
 
-  Header header;
+  RequestHeader header;
   header.name = line.substr(0, colon);
   header.value = trim_left(line.substr(colon + 1));
   return header;
@@ -115,7 +114,7 @@ ParseResult parse_request(std::string_view buffer) {
     }
 
     std::string_view line = buffer.substr(offset, line_end - offset);
-    std::optional<Header> header = parse_header_line(line);
+    std::optional<RequestHeader> header = parse_header_line(line);
     if (!header) {
       return {ParseStatus::Error, std::nullopt, 0};
     }

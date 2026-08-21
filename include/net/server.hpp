@@ -19,8 +19,8 @@ public:
 private:
   int port_;
   int server_fd_;
-  std::atomic<bool> running_{false};
   tyga::http::Router &router_;
+  std::atomic<bool> running_{false};
   std::unordered_map<int, std::unique_ptr<tyga::http::HttpConnection>>
       connections_;
 };
