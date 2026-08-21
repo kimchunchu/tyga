@@ -57,6 +57,7 @@ bool HttpConnection::read() {
     read_buffer_.append(buffer, bytes_read);
     return true;
   }
+
   if (bytes_read == 0) {
     return false;
   }
@@ -88,6 +89,7 @@ bool HttpConnection::write() {
 
   write_buffer_.clear();
   write_offset_ = 0;
+
   if (close_after_write_) {
     return false;
   }
